@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prediction
+  namespace: default
+  labels:
+    app: prediction-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prediction-app
+  template:
+    metadata:
+      labels:
+        app: prediction-app
+    spec:
+      containers:
+      - name: prediction-app
+        image:gcr.io/golden-memory-292205/newj-assign:v2 
+        ports:
+        - containerPort: 8000 
+        readinessProbe:
+            tcpSocket:
+               port: 8000 
+            initialDelaySeconds: 3
+            periodSeconds: 5
+        livenessProbe:
+            tcpSocket:
+               port: 8000 
+            initialDelaySeconds: 60
+            periodSeconds: 60
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prediction-app-service
+spec:
+  selector:
+    app: prediction-app
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: LoadBalancer
+  
+---
+
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: prediction-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: prediction
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 60
